@@ -1,19 +1,22 @@
 #!/bin/bash
 
-# Set the snapshot range
 SNAPSHOT_RANGE="[0:4]"
+
+GREEN=$(tput setaf 2)
+RED=$(tput setaf 1)
+RESET=$(tput sgr0)
 
 # Fetch all volumes and their VolumeIds
 echo "Fetching all volumes..."
 volumes=$(aws ec2 describe-volumes --query 'Volumes[*].VolumeId' --output text)
-volume_count=$(echo "$volumes" | wc -w| xargs)
-echo "-> Total volumes: $volume_count"
+volume_count=$(echo "$volumes" | wc -w | xargs)  # Trim any extra spaces
+echo "-> Fetched $volume_count volumes"
 
 # Fetch snapshots based on the variable range with additional details
-echo "Fetching all snapshots in range $SNAPSHOT_RANGE..."
+echo "Fetching all snapshots..."
 snapshots=$(aws ec2 describe-snapshots --owner-ids self --query "Snapshots$SNAPSHOT_RANGE.[SnapshotId,VolumeId,StartTime]" --output text)
-snapshot_count=$(echo "$snapshots" | wc -l | xargs)
-echo "-> Total snapshots: $snapshot_count"
+snapshot_count=$(echo "$snapshots" | wc -l | xargs)  # Trim any extra spaces
+echo "-> Fetched snapshots in range $SNAPSHOT_RANGE, Total snapshots $snapshot_count"
 
 echo "--------------------------------------------------"
 echo "Snapshot Details (Active and Orphan)"
@@ -31,9 +34,9 @@ while IFS= read -r snapshot; do
 
   # Check if the volume ID for the snapshot exists in the active volumes list
   if echo "$volumes" | grep -q "$volume_id"; then
-    status="ACTIVE"
+    status="${GREEN}ACTIVE${RESET}"
   else
-    status="ORPHAN"
+    status="${RED}ORPHAN${RESET}"
   fi
 
   # Print the snapshot details in tabular format
