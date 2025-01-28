@@ -1,6 +1,7 @@
 #!/bin/bash
 
 SNAPSHOT_RANGE="[0:4]"
+DATE_FILTER="2026-01-25T00:00:00Z"
 
 GREEN=$(tput setaf 2)
 RED=$(tput setaf 1)
@@ -14,7 +15,13 @@ echo "-> Fetched $volume_count volumes"
 
 # Fetch snapshots based on the variable range with additional details
 echo "Fetching all snapshots..."
-snapshots=$(aws ec2 describe-snapshots --owner-ids self --query "Snapshots[?StartTime<'2020-01-01T00:00:00Z']$SNAPSHOT_RANGE.[SnapshotId,VolumeId,StartTime]" --output text)
+
+# get snapshots by range
+# snapshots=$(aws ec2 describe-snapshots --owner-ids self --query "Snapshots$SNAPSHOT_RANGE.[SnapshotId,VolumeId,StartTime]" --output text)
+
+# get snapshots by date
+snapshots=$(aws ec2 describe-snapshots --owner-ids self --query "Snapshots[?StartTime<'$DATE_FILTER'].[SnapshotId,VolumeId,StartTime]${SNAPSHOT_RANGE}" --output text)
+
 snapshot_count=$(echo "$snapshots" | wc -l | xargs)  # Trim any extra spaces
 echo "-> Fetched snapshots in range $SNAPSHOT_RANGE, Total snapshots $snapshot_count"
 
