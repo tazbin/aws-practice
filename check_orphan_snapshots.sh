@@ -14,7 +14,7 @@ echo "-> Fetched $volume_count volumes"
 
 # Fetch snapshots based on the variable range with additional details
 echo "Fetching all snapshots..."
-snapshots=$(aws ec2 describe-snapshots --owner-ids self --query "Snapshots$SNAPSHOT_RANGE.[SnapshotId,VolumeId,StartTime]" --output text)
+snapshots=$(aws ec2 describe-snapshots --owner-ids self --query "Snapshots[?StartTime<'2020-01-01T00:00:00Z']$SNAPSHOT_RANGE.[SnapshotId,VolumeId,StartTime]" --output text)
 snapshot_count=$(echo "$snapshots" | wc -l | xargs)  # Trim any extra spaces
 echo "-> Fetched snapshots in range $SNAPSHOT_RANGE, Total snapshots $snapshot_count"
 
