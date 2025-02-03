@@ -16,25 +16,20 @@ echo "-> Fetched $volume_count volumes"
 # Fetch snapshots based on the variable range with additional details
 echo "Fetching all snapshots..."
 
-# Get snapshots by date
-# snapshots=$(aws ec2 describe-snapshots --owner-ids self \
-#     --query "Snapshots[?StartTime<'$DATE_FILTER'].[SnapshotId,VolumeId,StartTime,VolumeSize]$SNAPSHOT_RANGE" \
-#     --output text)
-
 # Get snapshots by range
 snapshots=$(aws ec2 describe-snapshots --owner-ids self \
     --query "Snapshots$SNAPSHOT_RANGE.[SnapshotId,VolumeId,StartTime,VolumeSize]" \
     --output text)
 
 snapshot_count=$(echo "$snapshots" | wc -l | xargs)  # Trim any extra spaces
-echo "-> Fetched snapshots in range $SNAPSHOT_RANGE, Total snapshots $snapshot_count"
+echo "-> Fetched snapshots in range $SNAPSHOT_RANGE, Total snapshots: $snapshot_count"
 
-echo "------------------------------------------------------------------"
+echo "----------------------------------------------------------------------------------------------------------------------"
 echo "Snapshot Details (Active and Orphan)"
-echo "------------------------------------------------------------------"
+echo "----------------------------------------------------------------------------------------------------------------------"
 
 # Prepare the header for the table
-printf "%-25s %-30s %-35s %-15s %-10s\n" "SnapshotId" "VolumeId" "Creation Date" "Status" "Size (GB)"
+printf "%-25s %-30s %-35s %-15s %-15s\n" "SnapshotId" "VolumeId" "Creation Date" "Status" "Size (GB)"
 echo "----------------------------------------------------------------------------------------------------------------------"
 
 # Initialize total snapshot size
@@ -47,6 +42,18 @@ while IFS= read -r snapshot; do
   snapshot_date=$(echo "$snapshot" | awk '{print $3}')
   snapshot_size=$(echo "$snapshot" | awk '{print $4}')
 
+  # Ensure snapshot_size is a valid number
+  if [[ ! "$snapshot_size" =~ ^[0-9]+$ ]]; then
+    snapshot_size=0
+  fi
+
+  # Convert MB to GB if size is abnormally large
+  if [[ $snapshot_size -gt 1024 ]]; then
+    snapshot_size_gb=$(awk "BEGIN { printf \"%.2f\", $snapshot_size / 1024 }")
+  else
+    snapshot_size_gb=$snapshot_size
+  fi
+
   # Check if the volume ID for the snapshot exists in the active volumes list
   if echo "$volumes" | grep -q "$volume_id"; then
     status="${GREEN}ACTIVE${RESET}"
@@ -55,13 +62,13 @@ while IFS= read -r snapshot; do
   fi
 
   # Add snapshot size to total
-  total_size=$((total_size + snapshot_size))
+  total_size=$(awk "BEGIN { printf \"%.2f\", $total_size + $snapshot_size_gb }")
 
   # Print the snapshot details in tabular format
-  printf "%-25s %-30s %-35s %-26s %-10s\n" "$snapshot_id" "$volume_id" "$snapshot_date" "$status" "$snapshot_size"
+  printf "%-25s %-30s %-35s %-26s %-15s\n" "$snapshot_id" "$volume_id" "$snapshot_date" "$status" "$snapshot_size_gb"
 
 done <<< "$snapshots"
 
 echo "----------------------------------------------------------------------------------------------------------------------"
-printf "Total Snapshot Size: %d GB\n" "$total_size"
+printf "Total Snapshot Size: %.2f GB\n" "$total_size"
 echo "----------------------------------------------------------------------------------------------------------------------"
